@@ -37,7 +37,7 @@ class ScenarioGenerator():
 
         for idx, (line_idx, sm_params) in enumerate(zip(self.dyn.sm_params.keys(), self.dyn.sm_params.values())):
 
-            self.dyn.sm_params[line_idx]['Params']['Base(MVA)'] = self.dyn.sm_params[line_idx]['Params']['Base(MVA)']*sm_multipli[idx]
+            self.dyn.sm_params[line_idx]['Params']['Base(MVA)'] = round(self.dyn.sm_params[line_idx]['Params']['Base(MVA)']*sm_multipli[idx], 1)
 
 
         self.net.gen_data['PMAX_MW'] = self.net.gen_data['PMAX_MW'].astype('float')*sm_multipli
@@ -86,11 +86,13 @@ class ScenarioGenerator():
         self.net.networkInfo(show=False)
 
 
-    def ChangeLoad(self, carga, min_load=0.60, max_load=0.95):
+    def ChangeLoad(self, carga, min_load=0.60, max_load=0.95, H=False, FILE=None):
 
         carga = pd.read_csv(carga)
-        carga   = carga[(carga['Carregamento'] > min_load) & (carga['Carregamento'] < max_load)]
+        carga   = carga[(carga['Carregamento'] >= min_load) & (carga['Carregamento'] <= max_load)]
         n_carga = random.sample(range(0, len(carga)), 1)[0]
+
+        multiplier = round(carga.iloc[n_carga]['Total'], 2)
 
         self.net.load_data['PL_MW']   = self.net.load_data['PL_MW'].astype('float')
         self.net.load_data['QL_MVAR'] = self.net.load_data['QL_MVAR'].astype('float')
@@ -103,6 +105,27 @@ class ScenarioGenerator():
         self.net.load_data['QL_MVAR'] = self.net.load_data['PL_MW']*(old_QL/old_PL)
         self.net.load_data.loc[self.net.load_data['QL_MVAR'].isin([np.inf, -np.inf]), 'QL_MVAR'] = 0
         self.net.load_data['QL_MVAR'] = self.net.load_data['QL_MVAR'].round(decimals=1)
+
+        if H:
+
+            if FILE is None:
+
+                multiplier = multiplier*1.1
+                multiplier = 1 if multiplier > 1 else multiplier
+
+                for idx, (line_idx, sm_params) in enumerate(zip(self.dyn.sm_params.keys(), self.dyn.sm_params.values())):
+                    self.dyn.sm_params[line_idx]['Params']['H(MWMVA.s)'] = round(self.dyn.sm_params[line_idx]['Params']['H(MWMVA.s)']*multiplier, 2)
+
+            else:
+                inercia = pd.read_csv(FILE)
+                inercia = inercia[(inercia['Carregamento'] >= min_load) & (inercia['Carregamento'] <= max_load)]
+                n_inercia = random.sample(range(0, len(inercia)), 1)[0]
+                n_inercia = inercia.iloc[n_inercia].values[:-2]
+
+                for idx, (line_idx, sm_params) in enumerate(zip(self.dyn.sm_params.keys(), self.dyn.sm_params.values())):
+                    self.dyn.sm_params[line_idx]['Params']['H(MWMVA.s)'] = self.dyn.sm_params[line_idx]['Params']['H(MWMVA.s)']*n_inercia[idx]
+
+
 
 
     def Save(self, net_path, dyn_path=None, wfs_path=None, wfs_list=None):

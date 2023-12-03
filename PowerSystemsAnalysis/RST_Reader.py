@@ -205,7 +205,7 @@ class RST_Process():
             df = df.pivot_table(['A', 'B'], ['OP', 'Contigence'], 'SIGLA').reset_index(drop=False)
 
         except:
-            # print(name)
+            print(name)
             df = pd.DataFrame(stab_points, columns=['Contigence', 'Contigence_Number', 'SIGLA', 'A'])
 
             df['OP'] = name
